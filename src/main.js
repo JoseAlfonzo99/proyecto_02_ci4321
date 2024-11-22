@@ -189,65 +189,82 @@ controls.update();
 let energy = 100; // Energía inicial del tanque 
 let projectilesLeft = 20; // Número inicial de proyectiles
 
-function updateEnergyBar() { 
-    const energyBar = document.getElementById('energy-bar'); 
-    energyBar.style.width = `${energy}%`; 
+// Cargar y configurar el mapa de sprites 
+const spriteAtlasLoader = new THREE.TextureLoader(); 
+const spriteAtlasNumber = spriteAtlasLoader.load('src/Sprites/sprite_numbers.png'); 
+const spriteAtlasEnergyBar = spriteAtlasLoader.load('src/Sprites/sprite_energy_bar.png'); 
+
+
+// Configurar los materiales de los números y barra de energía 
+const numberMaterial = new THREE.SpriteMaterial({ map: spriteAtlasNumber }); 
+const energyMaterial = new THREE.SpriteMaterial({ map: spriteAtlasEnergyBar }); 
+// Crear sprites de números 
+const projectileCounterSprites = []; 
+for (let i = 0; i < 2; i++) { 
+    const sprite = new THREE.Sprite(numberMaterial); 
+    sprite.position.set(10 + i * 10, 45, 0); 
+    sprite.scale.set(5, 5, 1); 
+    scene.add(sprite); 
+    projectileCounterSprites.push(sprite); 
+} 
+// Crear sprite de barra de energía 
+const energyBarSprite = new THREE.Sprite(energyMaterial); 
+energyBarSprite.position.set(0, 35, 0); 
+energyBarSprite.scale.set(100, 5, 1); 
+scene.add(energyBarSprite); 
+
+const numColumns = 4; 
+const numRows = 4;
+function setSpriteTexture(sprite, digit) { 
+    const tileWidth = 1 / numColumns; 
+    const tileHeight = 1 / numRows; 
+    // Calcular fila y columna del dígito 
+    const column = digit % numColumns; 
+    const row = Math.floor(digit / numColumns); 
+    // Establecer el offset del mapa de la textura 
+    sprite.material.map.offset.set(column * tileWidth, row * tileHeight); 
+    sprite.material.map.repeat.set(tileWidth, tileHeight); 
+}
+// Función para actualizar los sprites del contador de proyectiles 
+function updateProjectileCounterSprites() { 
+    const digits = projectilesLeft.toString().padStart(2, '0').split('').map(Number); 
+    for (let i = 0; i < projectileCounterSprites.length; i++) { 
+        const sprite = projectileCounterSprites[i]; 
+        const digit = digits[i] || 0; 
+        setSpriteTexture(sprite, digit); 
+    } 
 }
 
-// Llamar a esta función cada vez que la energía cambie 
-function decreaseEnergy(amount) { 
-    energy = Math.max(0, energy - amount); 
-    updateEnergyBar(); 
-}
-
-function updateProjectileCounter() {
-    const counter = document.getElementById('projectile-counter');
-    counter.innerText = `Proyectiles: ${projectilesLeft}`; 
+// Función para actualizar la barra de energía 
+function updateEnergyBarSprite() { 
+    energyBarSprite.scale.set(energy, 5, 1); 
+    // Actualiza el ancho de la barra 
+} 
+    // Función para disparar una bala (actualizada) 
+function shootBullet(type) { 
+    if (projectilesLeft > 0) { 
+        let bullet; if (type === 'linear') { 
+            bullet = createLinearBullet(mountPoint);
+        } else if (type === 'gravity') { 
+            bullet = createGravityBullet(mountPoint); 
+        } bullets.push(bullet); 
+        scene.add(bullet); 
+        projectilesLeft--; 
+        updateProjectileCounterSprites(); 
+        // Disminuir energía al disparar 
+        decreaseEnergy(5); 
+    } 
 } 
 
-
-// Cargar el sprite de proyectiles
-const projectileSprite = loader.load('src/texture/balas.dds');
-
-const spriteMaterial = new THREE.SpriteMaterial({ map: projectileSprite });
-const projectileSpriteMesh = new THREE.Sprite(spriteMaterial);
-projectileSpriteMesh.position.set(50, 50, 0); // Posición del sprite en la interfaz
-projectileSpriteMesh.scale.set(50, 50, 1); // Tamaño del sprite
-
-// Añadir el sprite a la escena
-scene.add(projectileSpriteMesh);
-
-// Actualizar el sprite cuando cambia el número de proyectiles
-function updateProjectileSprite() {
-    // Lógica para actualizar el sprite según el número de proyectiles restantes
-    // Aquí podrías cambiar la posición o la visibilidad del sprite, por ejemplo
-    projectileSpriteMesh.visible = (projectilesLeft > 0);
+// Función para disminuir la energía 
+function decreaseEnergy(amount) { 
+    energy = Math.max(0, energy - amount); 
+    updateEnergyBarSprite(); 
 }
-
-// Llamar a esta función cada vez que el número de proyectiles cambie
-function shootBullet(type) {
-    if (projectilesLeft > 0) {
-        let bullet;
-        if (type === 'linear') {
-            bullet = createLinearBullet(mountPoint);
-        } else if (type === 'gravity') {
-            bullet = createGravityBullet(mountPoint);
-        }
-        bullets.push(bullet);
-        scene.add(bullet);
-
-        projectilesLeft--;
-        updateProjectileCounter();
-        updateProjectileSprite();
-        // Disminuir energía al disparar
-        decreaseEnergy(5); 
-    }
-}
-
 // Inicializar las barras y el contador al cargar la página 
-document.addEventListener('DOMContentLoaded', (event) => { 
-    updateEnergyBar(); updateProjectileCounter(); 
-});
+//document.addEventListener('DOMContentLoaded', (event) => { 
+    //updateEnergyBar(); updateProjectileCounter(); 
+//});
 
 // Función para detectar colisiones
 function checkCollisionAABB(box1, box2) {
