@@ -311,6 +311,104 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
+const totalFrames = 3;
+let countdownValue = 3;
+let countdownSprite = null;
+let numberTextures = [];
+let countdownInterval = null;
+
+const loadNumberTextures = (callback) => {
+    const loader = new THREE.TextureLoader();
+    let loadedTextures = 0;
+
+    for (let i = 0; i < totalFrames; i++) {
+        loader.load(
+            `src/Sprites/Default(64px)/dice_${i}.png`,
+            (texture) => {
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                texture.needsUpdate = true;
+                numberTextures[i] = texture;
+                loadedTextures++;
+
+                if (loadedTextures === totalFrames && callback) {
+                    callback();
+                }
+            },
+            undefined,
+            (error) => {
+                console.error(`Error cargando la textura dice_${i}.png`, error);
+            }
+        );
+    }
+};
+
+function createCountdownSprite(scene) {
+    if (countdownSprite) return; 
+
+    const material = new THREE.SpriteMaterial({ 
+        map: numberTextures[countdownValue],
+        transparent: true 
+    });
+    countdownSprite = new THREE.Sprite(material);
+    countdownSprite.scale.set(1, 1, 1); 
+    countdownSprite.position.set(0, 5.7, -4);
+    scene.add(countdownSprite);
+}
+
+function fadeTransition(nextTexture) {
+    const fadeDuration = 300;
+    let elapsed = 0;
+
+    const fadeStep = () => {
+        if (!countdownSprite) return;
+
+        elapsed += 16;
+        const t = Math.min(elapsed / fadeDuration, 1);
+
+        countdownSprite.material.opacity = 1 - t;
+
+        if (t < 1) {
+            requestAnimationFrame(fadeStep);
+        } else if (nextTexture) {
+            countdownSprite.material.map = nextTexture;
+            countdownSprite.material.needsUpdate = true;
+            countdownSprite.material.opacity = 1;
+        }
+    };
+
+    fadeStep();
+}
+
+function updateCountdownSprite(scene) {
+    countdownValue--;
+
+    if (countdownValue < 0) {
+        if (countdownSprite) {
+            scene.remove(countdownSprite);
+            countdownSprite.material.dispose(); // Liberar memoria
+            countdownSprite = null;
+        }
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        return;
+    }
+    fadeTransition(numberTextures[countdownValue]);
+}
+
+function startCountdown(scene) { 
+    if (countdownInterval) 
+        return; 
+    
+    loadNumberTextures(() => { 
+        createCountdownSprite(scene); 
+        countdownInterval = setInterval(() => { 
+            updateCountdownSprite(scene); 
+        }, 1000); 
+    }); 
+}
+
+startCountdown(scene);
 
 function animate() {
     requestAnimationFrame(animate);
